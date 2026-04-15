@@ -78,7 +78,7 @@ The built-in chatbot helps users by:
 
 ## 📦 Installation
 
-- git clone https://github.com/your-username/resume-analyzer.git
+- git clone https://github.com/Indrajaiswal/AI-Powered-Resume-Analyzer.git
 - cd resume-analyzer
 - pip install -r requirements.txt
 - streamlit run app.py

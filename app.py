@@ -2,6 +2,7 @@ import streamlit as st
 import PyPDF2
 import re
 import subprocess
+import requests
 
 
 from sentence_transformers import SentenceTransformer, util
@@ -492,42 +493,46 @@ RESUME:
 JOB DESCRIPTION:
 {job_desc[:2000]}
 
-QUESTION:
+User Question:
 {question}
+
+Give 4-5 clear bullet points only.
 """
 
     try:
-        result = subprocess.run(
-            ["ollama", "run", "mistral"],
-            input=prompt,
-            text=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="ignore",
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "mistral",
+                "prompt": prompt,
+                "stream": False
+            },
             timeout=180
         )
 
-        output = result.stdout.strip()
-
-        # 🔥 STEP 1: remove ANSI garbage
-        output = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", output)
-
-        # 🔥 STEP 2: remove weird unicode / duplication issues
-        output = re.sub(r"(\b\w+\b)(\s+\1)+", r"\1", output)
-
-        # 🔥 STEP 3: remove non-ascii noise
-        output = re.sub(r"[^\x00-\x7F]+", " ", output)
-
-        # 🔥 STEP 4: clean spaces
-        output = re.sub(r"[ \t]+", " ", output)
-
-        return output
-
-    except subprocess.TimeoutExpired:
-        return "AI is taking too long. Try again."
-
+        return response.json()["response"]
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error connecting to Ollama: {str(e)}"
+
+    #     # 🔥 STEP 1: remove ANSI garbage
+    #     output = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", output)
+
+    #     # 🔥 STEP 2: remove weird unicode / duplication issues
+    #     output = re.sub(r"(\b\w+\b)(\s+\1)+", r"\1", output)
+
+    #     # 🔥 STEP 3: remove non-ascii noise
+    #     output = re.sub(r"[^\x00-\x7F]+", " ", output)
+
+    #     # 🔥 STEP 4: clean spaces
+    #     output = re.sub(r"[ \t]+", " ", output)
+
+    #     return output
+
+    # except subprocess.TimeoutExpired:
+    #     return "AI is taking too long. Try again."
+
+    # except Exception as e:
+    #     return f"Error: {str(e)}"
 
 
 # ================= ANALYZE BUTTON =================
@@ -623,11 +628,11 @@ if st.session_state.analysis_done:
 
 # ================= AI COACH =================
 if st.session_state.analysis_done:
-    
+
     st.markdown(
-    "<h3 style='color:black;'>🤖 AI Career Chatbot</h3>",
-    unsafe_allow_html=True
-)    
+        "<h3 style='color:black;'>🤖 AI Career Chatbot</h3>",
+        unsafe_allow_html=True
+    )
 
     questions = [
         "What should I improve in my resume?",
@@ -642,34 +647,37 @@ if st.session_state.analysis_done:
     if st.button("💬 Ask AI"):
 
         with st.spinner("Thinking..."):
-            answer = ask_ai(
+            response = ask_ai(
                 question,
                 st.session_state.resume_text,
                 st.session_state.job_desc
             )
 
-        cleaned = format_ai_output(answer)
+            st.session_state.chat_response = response
+
+    # 👇 ALWAYS show response outside button
+    if st.session_state.chat_response:
+        cleaned = format_ai_output(st.session_state.chat_response)
 
         for line in cleaned.split("\n"):
             if line.strip():
-                 st.markdown(
-   f"""
-            <div style="
-                background:#f5f9ff;
-                color:black;
-                padding:10px 12px;
-                margin-bottom:8px;
-                border-left:4px solid #0A66C2;
-                border-radius:8px;
-                font-size:14px;
-                line-height:1.5;
-            ">
-        • {line.strip()}
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
+                st.markdown(
+                    f"""
+                    <div style="
+                        background:#f5f9ff;
+                        color:black;
+                        padding:10px 12px;
+                        margin-bottom:8px;
+                        border-left:4px solid #0A66C2;
+                        border-radius:8px;
+                        font-size:14px;
+                        line-height:1.5;
+                    ">
+                    • {line.strip()}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
        
 
         

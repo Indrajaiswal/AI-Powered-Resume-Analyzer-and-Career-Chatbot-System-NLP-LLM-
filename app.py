@@ -776,7 +776,7 @@ if st.session_state.analysis_done:
 
     # INIT STATE
     if "chat_response" not in st.session_state:
-        st.session_state.chat_response = ""
+        st.session_state.chat_response = None
 
     # INPUT
     question = st.selectbox("Select Question", questions)
@@ -784,23 +784,22 @@ if st.session_state.analysis_done:
     # ACTION
     if st.button("💬 Ask AI"):
 
-        with st.spinner("Thinking..."):
+     with st.spinner("Thinking..."):
 
-            resume_text = st.session_state.resume_text
-            job_desc = st.session_state.job_desc
-            missing = st.session_state.missing
-
-            st.session_state.chat_response = ask_ai(
-                question,
-                resume_text,
-                job_desc,
-                missing
-            )
+        st.session_state.chat_response = ask_ai(
+            question,
+            st.session_state.get("resume_text", ""),
+            st.session_state.get("job_desc", ""),
+            st.session_state.get("missing", [])
+        )
 
     # OUTPUT (ONLY ONCE)
     if st.session_state.chat_response:
 
         cleaned = format_ai_output(st.session_state.chat_response)
+
+        if not cleaned.strip():
+         st.warning("⚠️ AI returned empty response")
 
         st.markdown( "<h3 style='color:black;'>💡AI Response</h3>", unsafe_allow_html=True )
 

@@ -775,22 +775,43 @@ if st.session_state.analysis_done:
         "How can I improve ATS score?"
     ]
 
-    # initialize once
-    if "chat_response" not in st.session_state:
-        st.session_state.chat_response = ""
 
-    question = st.selectbox("Select Question", questions)
+# ---------------- INIT STATE ----------------
+if "chat_response" not in st.session_state:
+       st.session_state.chat_response = ""
 
-    if st.button("💬 Ask AI"):
+    
 
+# ---------------- INPUT ----------------
+question = st.selectbox("Select Question", questions)
+
+
+# ---------------- ACTION ----------------
+if st.button("💬 Ask AI"):
         with st.spinner("Thinking..."):
+
+            resume_text = st.session_state.resume_text or "No resume uploaded"
+            job_desc = st.session_state.job_desc or "No job description provided"
+            missing = st.session_state.missing or []
+
             st.session_state.chat_response = ask_ai(
                 question,
-                st.session_state.resume_text,
-                st.session_state.job_desc,
-                st.session_state.missing
-                
+                resume_text,
+                job_desc,
+                missing
             )
+
+
+# ---------------- OUTPUT (IMPORTANT: ALWAYS OUTSIDE BUTTON) ----------------
+if st.session_state.chat_response:
+
+    cleaned = format_ai_output(st.session_state.chat_response)
+
+    st.markdown("### 💡 AI Response")
+
+    for line in cleaned.split("\n"):
+        if line.strip():
+            st.markdown(f"• {line.strip()}")
 
   
 

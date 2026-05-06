@@ -6,6 +6,7 @@ import requests
 
 
 from sentence_transformers import SentenceTransformer, util
+from typer import prompt
 
 # ================= LOAD MODEL =================
 @st.cache_resource(show_spinner="Loading AI model...")
@@ -436,7 +437,11 @@ def calculate_ats_ai(resume_text, resume_skills, jd_skills):
 
 # ================= FORMAT AI OUTPUT (ADD HERE) =================
 def format_ai_output(text):
+    if not text:
+        return ""
+    
     lines = text.split("\n")
+    cleaned = []
 
     bullets = []
 
@@ -623,31 +628,24 @@ def ask_ai(question, resume_text, job_desc, missing_skills):
 
     mode = question_map.get(question, "IMPROVEMENT")
 
-    # ✅ SELECT TEMPLATE (THIS WAS MISSING)
     if mode == "FIT":
         template = FIT_PROMPT
-
     elif mode == "SKILLS":
         template = SKILL_PROMPT
-
     elif mode == "PROJECTS":
         template = PROJECT_PROMPT
-
     elif mode == "ATS":
         template = ATS_PROMPT
-
     else:
         template = IMPROVEMENT_PROMPT
 
-    # 🔥 Fill prompt safely
     missing_text = ", ".join(missing_skills) if missing_skills else "No major gaps detected"
 
     prompt = SYSTEM_PROMPT + "\n\n" + template.format(
-    resume_text=resume_text[:2000],
-    job_desc=job_desc[:2000],
-    missing_skills=missing_text
-)
-
+        resume_text=resume_text[:2000],
+        job_desc=job_desc[:2000],
+        missing_skills=missing_text
+    )
 
     try:
         response = requests.post(
@@ -655,17 +653,23 @@ def ask_ai(question, resume_text, job_desc, missing_skills):
             json={
                 "model": "mistral",
                 "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.1}
+                "stream": False
             },
             timeout=180
         )
 
-        return response.json().get("response", "No response")
+        print("STATUS:", response.status_code)
+        print("RAW:", response.text)
+
+        if response.status_code != 200:
+            return f"API Error: {response.text}"
+
+        data = response.json()
+
+        return data.get("response", "").strip()
 
     except Exception as e:
         return f"Error: {str(e)}"
-
 
 
 # ================= ANALYZE BUTTON =================
@@ -794,7 +798,7 @@ if st.session_state.analysis_done:
         )
 
     # OUTPUT (ONLY ONCE)
-    if st.session_state.chat_response:
+    if st.session_state.chat_response and st.session_state.chat_response.strip():
 
         cleaned = format_ai_output(st.session_state.chat_response)
 
